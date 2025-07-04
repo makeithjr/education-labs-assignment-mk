@@ -1,4 +1,4 @@
-﻿import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Send, History, Play, User, Bot, Clock, Sparkles } from 'lucide-react';
 
 interface Message {
@@ -24,6 +24,44 @@ interface VideoData {
     likeCount: string;
     tags: string[];
     embedUrl: string;
+}
+
+// Add TypeScript interfaces for API responses
+interface YouTubeSearchItem {
+    id: {
+        videoId: string;
+    };
+    snippet: {
+        title: string;
+        description: string;
+        channelTitle: string;
+        tags?: string[];
+    };
+}
+
+interface YouTubeVideoDetails {
+    id: string;
+    snippet: {
+        title: string;
+        description: string;
+        channelTitle: string;
+        tags?: string[];
+    };
+    contentDetails: {
+        duration: string;
+    };
+    statistics: {
+        viewCount?: string;
+        likeCount?: string;
+    };
+}
+
+interface YouTubeSearchResponse {
+    items: YouTubeSearchItem[];
+}
+
+interface YouTubeDetailsResponse {
+    items: YouTubeVideoDetails[];
 }
 
 const EducationApp = () => {
@@ -87,75 +125,87 @@ const EducationApp = () => {
         };
     }, [isResizing, isHistoryCollapsed]);
 
-      // Anthropic API / Claude Integration
-      const callClaudeAPI = async (userMessage: string) => {
+    // Anthropic API / Claude Integration
+    const callClaudeAPI = async (userMessage: string): Promise<string> => {
         const response = await fetch('/api/claude', {
-          method: 'POST',
-          headers: {'Content-Type': 'application/json'},
-          body: JSON.stringify({
-            model: 'claude-3-haiku-20240307',
-            max_tokens: 1500,
-            messages: [{
-              role: 'user',
-              content: `Please explain: ${userMessage}
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                model: 'claude-3-haiku-20240307',
+                max_tokens: 1500,
+                messages: [{
+                    role: 'user',
+                    content: `Please explain: ${userMessage}
                         Also suggest 2-3 specific search terms for finding educational videos about this topic.
                         Format your response as:
                         EXPLANATION: [your educational explanation]
                         SEARCH_TERMS: [term1, term2, term3]`
-            }]
-          })
+                }]
+            })
         });
-        
+
         if (!response.ok) {
-          throw new Error(`Claude API error: ${response.status}`);
+            throw new Error(`Claude API error: ${response.status}`);
         }
-          console.log(response);
+        
+        console.log(response);
         const data = await response.json();
         return data.content[0].text;
-      };
-     
-      //YouTube integration
-      const searchYouTubeVideos = async (searchTerms: string[]) => {
+    };
+
+    // YouTube integration - FIXED: Added proper TypeScript types and method
+    const searchYouTubeVideos = async (searchTerms: string[]): Promise<VideoData | null> => {
         for (const term of searchTerms) {
-          try {
-              const response = await fetch('/api/youtube', {
-                  body: JSON.stringify({ term })           // send just the query
-              });
-            
-            if (!response.ok) {
-              throw new Error(`YouTube API error: ${response.status}`);
+            try {
+                // FIXED: Added method and proper headers
+                const response = await fetch('/api/youtube', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ term })
+                });
+
+                if (!response.ok) {
+                    throw new Error(`YouTube API error: ${response.status}`);
+                }
+
+                const data: YouTubeSearchResponse = await response.json();
+
+                if (data.items && data.items.length > 0) {
+                    // FIXED: Added proper typing for map function
+                    const videoIds = data.items.map((item: YouTubeSearchItem) => item.id.videoId).join(',');
+                    
+                    const detailsResponse = await fetch('/api/youtube', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ ids: videoIds })
+                    });
+
+                    if (!detailsResponse.ok) {
+                        throw new Error(`YouTube details API error: ${detailsResponse.status}`);
+                    }
+
+                    const detailsData: YouTubeDetailsResponse = await detailsResponse.json();
+                    const bestVideo = detailsData.items[0];
+
+                    return {
+                        id: bestVideo.id,
+                        title: bestVideo.snippet.title,
+                        description: bestVideo.snippet.description || 'No description available',
+                        channel: bestVideo.snippet.channelTitle,
+                        duration: bestVideo.contentDetails.duration,
+                        viewCount: bestVideo.statistics.viewCount || '0',
+                        likeCount: bestVideo.statistics.likeCount || '0',
+                        tags: bestVideo.snippet.tags || [],
+                        embedUrl: `https://www.youtube.com/embed/${bestVideo.id}`
+                    };
+                }
+            } catch (error) {
+                console.warn(`Failed to search for "${term}":`, error);
+                continue;
             }
-            
-            const data = await response.json();
-            
-            if (data.items && data.items.length > 0) {
-              const videoIds = data.items.map(item => item.id.videoId).join(',');
-              const detailsResponse = await fetch('/api/youtube', {
-              body: JSON.stringify({ ids: videoIds })   // details
-            });
-              
-              const detailsData = await detailsResponse.json();
-              const bestVideo = detailsData.items[0];
-              
-              return {
-                id: bestVideo.id,
-                title: bestVideo.snippet.title,
-                description: bestVideo.snippet.description,
-                channel: bestVideo.snippet.channelTitle,
-                duration: bestVideo.contentDetails.duration,
-                viewCount: bestVideo.statistics.viewCount || '0',
-                likeCount: bestVideo.statistics.likeCount || '0',
-                tags: bestVideo.snippet.tags || [],
-                embedUrl: `https://www.youtube.com/embed/${bestVideo.id}`
-              };
-            }
-          } catch (error) {
-            console.warn(`Failed to search for "${term}":`, error);
-            continue;
-          }
         }
         return null;
-      };
+    };
 
     // message handler
     const handleSendMessage = async () => {
@@ -179,40 +229,47 @@ const EducationApp = () => {
         setInputValue('');
         setIsLoading(true);
 
-
-          try {
+        try {
             // Call Claude API for educational explanation and search terms
             const claudeResponse = await callClaudeAPI(userMessage);
-            
+
             // Extract search terms from Claude's response
             const searchTermsMatch = claudeResponse.match(/SEARCH_TERMS:\s*\[(.*?)\]/);
-            const searchTerms = searchTermsMatch 
-              ? searchTermsMatch[1].split(',').map(term => term.trim().replace(/['"]/g, ''))
-              : [userMessage.toLowerCase()];
-            
+            const searchTerms = searchTermsMatch
+                ? searchTermsMatch[1].split(',').map((term: string) => term.trim().replace(/['"]/g, ''))
+                : [userMessage.toLowerCase()];
+
             // Search YouTube directly for educational videos
             const videoData = await searchYouTubeVideos(searchTerms);
             if (videoData) {
-              setCurrentVideo(videoData);
+                setCurrentVideo(videoData);
             }
-            
+
             // Display Claude's explanation (clean up SEARCH_TERMS part)
             const explanation = claudeResponse.split('SEARCH_TERMS:')[0].replace('EXPLANATION:', '').trim();
-            
+
             const newClaudeMessage: Message = {
-              id: Date.now() + 1,
-              type: 'assistant',
-              content: explanation + (videoData ? '\n\nI found a relevant educational video for you!' : ''),
-              timestamp: new Date().toLocaleTimeString()
+                id: Date.now() + 1,
+                type: 'assistant',
+                content: explanation + (videoData ? '\n\nI found a relevant educational video for you!' : ''),
+                timestamp: new Date().toLocaleTimeString()
             };
-            
+
             setMessages(prev => [...prev, newClaudeMessage]);
-          } catch (error) {
+        } catch (error) {
             console.error('API Error:', error);
-            // Fallback to basic response...
-          } finally {
+            
+            // FIXED: Added proper error fallback
+            const errorMessage: Message = {
+                id: Date.now() + 1,
+                type: 'assistant',
+                content: `I'm sorry, I encountered an error while processing your request about "${userMessage}". Please try again or ask about a different topic.`,
+                timestamp: new Date().toLocaleTimeString()
+            };
+            setMessages(prev => [...prev, errorMessage]);
+        } finally {
             setIsLoading(false);
-          }
+        }
     };
 
     // key response handler
@@ -239,11 +296,8 @@ const EducationApp = () => {
 
     return (
         <div className="flex h-screen min-h-0 bg-gradient-to-br from-slate-50 via-blue-50 to-indigo-50">
-            
-
             {/* History Pane */}
-            <div className={`bg-white/80 backdrop-blur-xl border-r border-white/30 shadow-xl transition-all duration-300 flex flex-col min-h-0 ${isHistoryCollapsed ? 'w-16' : 'w-80'
-                }`}>
+            <div className={`bg-white/80 backdrop-blur-xl border-r border-white/30 shadow-xl transition-all duration-300 flex flex-col min-h-0 ${isHistoryCollapsed ? 'w-16' : 'w-80'}`}>
                 <div className="flex items-center justify-between p-6 border-b border-white/30 bg-gradient-to-r from-blue-500/10 to-purple-500/10 flex-shrink-0">
                     {!isHistoryCollapsed && (
                         <div className="flex items-center gap-3">
@@ -327,7 +381,7 @@ const EducationApp = () => {
                             <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-3">
                                 Welcome to your Educational Assistant!
                             </h2>
-                            <p className="text-lg text-gray-600 mb-4">Ask me about any topic, and I'll try to find relevant educational videos from <b>Khan Academy's</b> YouTube Channel.</p>                       
+                            <p className="text-lg text-gray-600 mb-4">Ask me about any topic, and I'll try to find relevant educational videos from <b>Khan Academy's</b> YouTube Channel.</p>
                         </div>
                     ) : (
                         messages.map((message) => (
@@ -349,8 +403,7 @@ const EducationApp = () => {
                                         : 'bg-white/90 backdrop-blur-sm text-gray-800 border-gray-200/50'
                                     }`}>
                                     <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
-                                    <p className={`text-xs mt-3 ${message.type === 'user' ? 'text-blue-100' : 'text-gray-500'
-                                        }`}>
+                                    <p className={`text-xs mt-3 ${message.type === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
                                         {message.timestamp}
                                     </p>
                                 </div>
@@ -387,8 +440,7 @@ const EducationApp = () => {
 
             {/* Vertical Resizer */}
             <div
-                className={`w-1 bg-gradient-to-b from-gray-300 to-gray-400 hover:bg-gradient-to-b hover:from-blue-400 hover:to-purple-500 cursor-col-resize transition-all duration-200 relative group ${isResizing ? 'bg-gradient-to-b from-blue-500 to-purple-600' : ''
-                    }`}
+                className={`w-1 bg-gradient-to-b from-gray-300 to-gray-400 hover:bg-gradient-to-b hover:from-blue-400 hover:to-purple-500 cursor-col-resize transition-all duration-200 relative group ${isResizing ? 'bg-gradient-to-b from-blue-500 to-purple-600' : ''}`}
                 onMouseDown={handleMouseDown}
                 style={{
                     position: 'fixed',
