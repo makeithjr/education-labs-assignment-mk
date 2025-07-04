@@ -1,10 +1,3 @@
-## Author
-
-Core codebase created by Michael Keith (https://github.com/your-github-username) & Claude AI 
-Email: michael.keith.jr@gmail.com
-
-*Feel free to reach out for questions!*
-
 # Educational Assistant
 
 A modern React app that helps users learn any topic by providing AI-powered explanations and finding relevant educational videos from Khan Academy's YouTube channel.
@@ -18,7 +11,7 @@ A modern React app that helps users learn any topic by providing AI-powered expl
 
 ## Screenshots
 
-![App Screenshot](screenshot.png) <!-- Add a screenshot if available -->
+![image](https://github.com/user-attachments/assets/06184964-ab67-41cd-a462-7f4b0c0af7bc)
 
 ## Getting Started
 
@@ -51,10 +44,10 @@ This project is ready to deploy on [Vercel](https://vercel.com/):
 
 ## Project Structure
 
-- `src/App.tsx` — Main application logic and UI.
-- `src/main.tsx` — App entry point.
-- `index.html` — HTML template.
-- `vite.config.ts` — Vite configuration.
+- `src/App.tsx` â€” Main application logic and UI.
+- `src/main.tsx` â€” App entry point.
+- `index.html` â€” HTML template.
+- `vite.config.ts` â€” Vite configuration.
 
 ## Technologies Used
 
@@ -66,6 +59,14 @@ This project is ready to deploy on [Vercel](https://vercel.com/):
 - [Anthropic Claude API](https://www.anthropic.com/)
 - [YouTube Data API v3](https://developers.google.com/youtube/v3)
 - [Vercel](https://vercel.com/) (for deployment)
+
+## Author
+
+Core codebase created by Michael Keith (https://github.com/your-github-username) & Claude AI 
+
+Email: michael.keith.jr@gmail.com
+
+*Feel free to reach out for questions!*
 
 ## License
 
