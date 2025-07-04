@@ -300,7 +300,7 @@ const EducationApp = () => {
         const errorMessage: Message = {
             id: Date.now() + 1,
             type: 'assistant',
-            content: `I'm sorry, I encountered an error while processing your request about "${userMessage}". Please try again or ask about a different educational topic.`,
+            content: `Unfortunately, I'm unable to process your request: "${userMessage}". Please try again, or inquire about a different educational subject.`,
             timestamp: new Date().toLocaleTimeString()
         };
         setMessages(prev => [...prev, errorMessage]);
