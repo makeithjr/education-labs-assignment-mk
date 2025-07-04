@@ -126,65 +126,79 @@ const EducationApp = () => {
     }, [isResizing, isHistoryCollapsed]);
 
     // Anthropic API / Claude Integration
-    const callClaudeAPI = async (userMessage: string): Promise<string> => {
-        const response = await fetch('/api/claude', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                model: 'claude-3-haiku-20240307',
-                max_tokens: 1500,
-                messages: [{
-                    role: 'user',
-                    content: `Please explain: ${userMessage}
-                        Also suggest 2-3 specific search terms for finding educational videos about this topic.
-                        Format your response as:
-                        EXPLANATION: [your educational explanation]
-                        SEARCH_TERMS: [term1, term2, term3]`
-                }]
-            })
-        });
+    const callClaudeAPI = async (userMessage: string): Promise<{ response: string; isEducational: boolean }> => {
+    const response = await fetch('/api/claude', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+            model: 'claude-3-haiku-20240307',
+            max_tokens: 1500,
+            messages: [{
+                role: 'user',
+                content: `First, determine if this query is educational in nature (related to learning, academics, science, math, history, etc.): "${userMessage}"
+                
+                If it IS educational:
+                - Provide a helpful explanation
+                - Suggest 2-3 specific search terms for Khan Academy videos
+                - Format as: EDUCATIONAL: YES
+                             EXPLANATION: [your explanation]
+                             SEARCH_TERMS: [term1, term2, term3]
+                
+                If it is NOT educational (like shopping, entertainment, personal questions, etc.):
+                - Politely redirect to educational topics
+                - Format as: EDUCATIONAL: NO
+                             EXPLANATION: I'm designed to help with educational topics like math, science, history, and academic subjects. Could you ask me about something you'd like to learn? For example, you could ask about algebra, physics, world history, or any other educational topic.`
+            }]
+        })
+    });
 
-        if (!response.ok) {
-            throw new Error(`Claude API error: ${response.status}`);
-        }
-        
-        console.log(response);
-        const data = await response.json();
-        return data.content[0].text;
+    if (!response.ok) {
+        throw new Error(`Claude API error: ${response.status}`);
+    }
+
+    const data = await response.json();
+    const responseText = data.content[0].text;
+    
+    // Check if the query was determined to be educational
+    const isEducational = responseText.includes('EDUCATIONAL: YES');
+    
+    return {
+        response: responseText,
+        isEducational
     };
 
-    // YouTube integration - FIXED: Added proper TypeScript types and method
+    // YouTube integration
     const searchYouTubeVideos = async (searchTerms: string[]): Promise<VideoData | null> => {
-        for (const term of searchTerms) {
-            try {
-                // FIXED: Added method and proper headers
-                const response = await fetch('/api/youtube', {
+    for (const term of searchTerms) {
+        try {
+            const response = await fetch('/api/youtube', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ term })
+            });
+
+            if (!response.ok) {
+                throw new Error(`YouTube API error: ${response.status}`);
+            }
+
+            const data: YouTubeSearchResponse = await response.json();
+
+            if (data.items && data.items.length > 0) {
+                const videoIds = data.items.map((item: YouTubeSearchItem) => item.id.videoId).join(',');
+                
+                const detailsResponse = await fetch('/api/youtube', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ term })
+                    body: JSON.stringify({ ids: videoIds })
                 });
 
-                if (!response.ok) {
-                    throw new Error(`YouTube API error: ${response.status}`);
+                if (!detailsResponse.ok) {
+                    continue; // Try next search term
                 }
 
-                const data: YouTubeSearchResponse = await response.json();
-
-                if (data.items && data.items.length > 0) {
-                    // FIXED: Added proper typing for map function
-                    const videoIds = data.items.map((item: YouTubeSearchItem) => item.id.videoId).join(',');
-                    
-                    const detailsResponse = await fetch('/api/youtube', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({ ids: videoIds })
-                    });
-
-                    if (!detailsResponse.ok) {
-                        throw new Error(`YouTube details API error: ${detailsResponse.status}`);
-                    }
-
-                    const detailsData: YouTubeDetailsResponse = await detailsResponse.json();
+                const detailsData: YouTubeDetailsResponse = await detailsResponse.json();
+                
+                if (detailsData.items && detailsData.items.length > 0) {
                     const bestVideo = detailsData.items[0];
 
                     return {
@@ -199,78 +213,102 @@ const EducationApp = () => {
                         embedUrl: `https://www.youtube.com/embed/${bestVideo.id}`
                     };
                 }
-            } catch (error) {
-                console.warn(`Failed to search for "${term}":`, error);
-                continue;
             }
+        } catch (error) {
+            console.warn(`Failed to search for "${term}":`, error);
+            continue;
         }
-        return null;
-    };
+    }
+    return null;
+};
 
     // message handler
     const handleSendMessage = async () => {
-        if (!inputValue.trim()) return;
+            if (!inputValue.trim()) return;
 
-        const userMessage = inputValue.trim();
-        const timestamp = new Date().toLocaleTimeString();
+    const userMessage = inputValue.trim();
+    const timestamp = new Date().toLocaleTimeString();
 
-        const newUserMessage: Message = {
-            id: Date.now(),
-            type: 'user',
-            content: userMessage,
-            timestamp
-        };
+    const newUserMessage: Message = {
+        id: Date.now(),
+        type: 'user',
+        content: userMessage,
+        timestamp
+    };
 
-        setMessages(prev => [...prev, newUserMessage]);
-        setQueryHistory(prev => [
-            { query: userMessage, timestamp, id: Date.now() },
-            ...prev.slice(0, 9)
-        ]);
-        setInputValue('');
-        setIsLoading(true);
+    setMessages(prev => [...prev, newUserMessage]);
+    setQueryHistory(prev => [
+        { query: userMessage, timestamp, id: Date.now() },
+        ...prev.slice(0, 9)
+    ]);
+    setInputValue('');
+    setIsLoading(true);
 
-        try {
-            // Call Claude API for educational explanation and search terms
-            const claudeResponse = await callClaudeAPI(userMessage);
+    try {
+        // Call Claude API with education filtering
+        const { response: claudeResponse, isEducational } = await callClaudeAPI(userMessage);
 
-            // Extract search terms from Claude's response
+        let videoData: VideoData | null = null;
+        let finalMessage = '';
+
+        if (isEducational) {
+            // Extract search terms and search for videos
             const searchTermsMatch = claudeResponse.match(/SEARCH_TERMS:\s*\[(.*?)\]/);
             const searchTerms = searchTermsMatch
                 ? searchTermsMatch[1].split(',').map((term: string) => term.trim().replace(/['"]/g, ''))
                 : [userMessage.toLowerCase()];
 
-            // Search YouTube directly for educational videos
-            const videoData = await searchYouTubeVideos(searchTerms);
-            if (videoData) {
-                setCurrentVideo(videoData);
-            }
-
-            // Display Claude's explanation (clean up SEARCH_TERMS part)
-            const explanation = claudeResponse.split('SEARCH_TERMS:')[0].replace('EXPLANATION:', '').trim();
-
-            const newClaudeMessage: Message = {
-                id: Date.now() + 1,
-                type: 'assistant',
-                content: explanation + (videoData ? '\n\nI found a relevant educational video for you!' : ''),
-                timestamp: new Date().toLocaleTimeString()
-            };
-
-            setMessages(prev => [...prev, newClaudeMessage]);
-        } catch (error) {
-            console.error('API Error:', error);
+            // Search YouTube for educational videos
+            videoData = await searchYouTubeVideos(searchTerms);
             
-            // FIXED: Added proper error fallback
-            const errorMessage: Message = {
-                id: Date.now() + 1,
-                type: 'assistant',
-                content: `I'm sorry, I encountered an error while processing your request about "${userMessage}". Please try again or ask about a different topic.`,
-                timestamp: new Date().toLocaleTimeString()
-            };
-            setMessages(prev => [...prev, errorMessage]);
-        } finally {
-            setIsLoading(false);
+            // Clean up the explanation
+            const explanation = claudeResponse
+                .split('SEARCH_TERMS:')[0]
+                .replace('EDUCATIONAL: YES', '')
+                .replace('EXPLANATION:', '')
+                .trim();
+
+            if (videoData) {
+                finalMessage = explanation + '\n\n🎥 I found a relevant Khan Academy video for you!';
+                setCurrentVideo(videoData);
+            } else {
+                finalMessage = explanation + '\n\n📚 I couldn\'t find a specific Khan Academy video for this topic, but the explanation above should help!';
+                setCurrentVideo(null);
+            }
+        } else {
+            // Non-educational query - show redirect message
+            const explanation = claudeResponse
+                .split('EDUCATIONAL: NO')[1]
+                .replace('EXPLANATION:', '')
+                .trim();
+            
+            finalMessage = explanation;
+            setCurrentVideo(null);
         }
-    };
+
+        const newClaudeMessage: Message = {
+            id: Date.now() + 1,
+            type: 'assistant',
+            content: finalMessage,
+            timestamp: new Date().toLocaleTimeString()
+        };
+
+        setMessages(prev => [...prev, newClaudeMessage]);
+    } catch (error) {
+        console.error('API Error:', error);
+        
+        const errorMessage: Message = {
+            id: Date.now() + 1,
+            type: 'assistant',
+            content: `I'm sorry, I encountered an error while processing your request about "${userMessage}". Please try again or ask about a different educational topic.`,
+            timestamp: new Date().toLocaleTimeString()
+        };
+        setMessages(prev => [...prev, errorMessage]);
+        setCurrentVideo(null);
+    } finally {
+        setIsLoading(false);
+    }
+};
 
     // key response handler
     const handleKeyPress = (e: React.KeyboardEvent) => {
