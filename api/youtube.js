@@ -2,7 +2,7 @@
 export default async function handler(req, res) {
     if (req.method !== 'POST') return res.status(405).end('Method Not Allowed');
 
-    const { term, ids } = req.body;   // accept either field
+    const { term, ids } = req.body;
 
     let url;
 
@@ -15,13 +15,13 @@ export default async function handler(req, res) {
         });
         url = `https://www.googleapis.com/youtube/v3/videos?${params}`;
     } else if (term) {
-        // search request
+        // search request - Enhanced with Khan Academy focus
         const params = new URLSearchParams({
             key: process.env.YOUTUBE_API_KEY,
-            q: `${term} tutorial education`,
+            q: `${term} tutorial education Khan Academy`, // Added "Khan Academy" to improve relevance
             type: 'video',
             part: 'snippet',
-            maxResults: '3',
+            maxResults: '5', // Increased from 3 to have better options
             order: 'relevance',
             videoDuration: 'medium',
             videoDefinition: 'high',
@@ -33,7 +33,18 @@ export default async function handler(req, res) {
         return res.status(400).json({ error: 'term or ids is required' });
     }
 
-    const ytRes = await fetch(url);
-    const data = await ytRes.json();
-    res.status(ytRes.status).json(data);
+    try {
+        const ytRes = await fetch(url);
+        const data = await ytRes.json();
+        
+        // Add error logging for debugging
+        if (!ytRes.ok) {
+            console.error('YouTube API Error:', data);
+        }
+        
+        res.status(ytRes.status).json(data);
+    } catch (error) {
+        console.error('YouTube API Handler Error:', error);
+        res.status(500).json({ error: 'Internal server error' });
+    }
 }
