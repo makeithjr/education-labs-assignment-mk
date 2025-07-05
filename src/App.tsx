@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+﻿import React, { useState, useRef, useEffect } from 'react';
 import { ChevronLeft, ChevronRight, Send, History, Play, User, Bot, Clock, Sparkles } from 'lucide-react';
 
 interface Message {
@@ -140,6 +140,7 @@ const EducationApp = () => {
                 If it IS educational:
                 - Provide a helpful explanation
                 - Suggest 2-3 specific search terms for Khan Academy videos
+                - Provide the specific search terms for the Khan Academy videos
                 - Format as: EDUCATIONAL: YES
                              EXPLANATION: [your explanation]
                              SEARCH_TERMS: [term1, term2, term3]
@@ -420,7 +421,58 @@ const EducationApp = () => {
                             <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-3">
                                 Welcome to your Educational Assistant!
                             </h2>
-                            <p className="text-lg text-gray-600 mb-4">Ask me about any topic, and I'll try to find relevant educational videos from <b>Khan Academy's</b> YouTube Channel.</p>
+                            <p className="text-lg text-gray-600 mb-8">Ask me about any academic topic, and I'll try to find relevant educational videos from <b>Khan Academy's</b> YouTube channel.</p>
+
+                            {/* Usage Guide and Sample Prompts */}
+                            <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm border border-blue-200/50 rounded-2xl p-5 shadow-lg max-w-4xl mx-auto">
+                                <div className="flex items-center gap-2 mb-3">
+                                    <Sparkles className="w-5 h-5 text-blue-600" />
+                                    <h3 className="font-bold text-blue-800 text-sm">How to Use This Educational Assistant</h3>
+                                </div>
+
+                                <div className="grid md:grid-cols-2 gap-4 text-sm">
+                                    <div className="space-y-3">
+                                        <div>
+                                            <h4 className="font-semibold text-blue-700 mb-2">✨ What I Do:</h4>
+                                            <ul className="space-y-1 text-blue-600 text-xs">
+                                                <li>• Provide educational explanations</li>
+                                                <li>• Find Khan Academy videos</li>
+                                                <li>• Focus on academic learning</li>
+                                            </ul>
+                                        </div>
+
+                                        <div>
+                                            <h4 className="font-semibold text-blue-700 mb-2">💡 Best Practices:</h4>
+                                            <ul className="space-y-1 text-blue-600 text-xs">
+                                                <li>• Ask specific learning questions</li>
+                                                <li>• Use educational keywords</li>
+                                                <li>• Mention subjects or topics</li>
+                                            </ul>
+                                        </div>
+                                    </div>
+
+                                    <div>
+                                        <h4 className="font-semibold text-blue-700 mb-2">🎯 Try These Sample Prompts:</h4>
+                                        <div className="space-y-2">
+                                            {[
+                                                "Explain how photosynthesis works",
+                                                "What is the Pythagorean theorem?",
+                                                "How do derivatives work in calculus?",
+                                                "What is machine learning?"
+                                            ].map((prompt, index) => (
+                                                <button
+                                                    key={index}
+                                                    onClick={() => setInputValue(prompt)}
+                                                    className="block w-full text-left px-3 py-2 bg-white/60 hover:bg-white/90 border border-blue-200/50 hover:border-blue-300 rounded-lg text-xs text-blue-700 hover:text-blue-800 transition-all duration-200 hover:shadow-md"
+                                                >
+                                                    "{prompt}"
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+
+                            </div>
                         </div>
                     ) : (
                         messages.map((message) => (
@@ -429,8 +481,8 @@ const EducationApp = () => {
                                 className={`flex gap-4 ${message.type === 'user' ? 'flex-row-reverse' : 'flex-row'}`}
                             >
                                 <div className={`w-10 h-10 rounded-xl flex items-center justify-center shadow-lg ${message.type === 'user'
-                                        ? 'bg-gradient-to-r from-blue-500 to-blue-600'
-                                        : 'bg-gradient-to-r from-gray-500 to-gray-600'
+                                    ? 'bg-gradient-to-r from-blue-500 to-blue-600'
+                                    : 'bg-gradient-to-r from-gray-500 to-gray-600'
                                     }`}>
                                     {message.type === 'user' ?
                                         <User className="w-5 h-5 text-white" /> :
@@ -438,8 +490,8 @@ const EducationApp = () => {
                                     }
                                 </div>
                                 <div className={`max-w-md lg:max-w-lg xl:max-w-xl px-5 py-4 rounded-2xl shadow-lg border transition-all duration-200 hover:shadow-xl ${message.type === 'user'
-                                        ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-blue-400/30'
-                                        : 'bg-white/90 backdrop-blur-sm text-gray-800 border-gray-200/50'
+                                    ? 'bg-gradient-to-r from-blue-500 to-blue-600 text-white border-blue-400/30'
+                                    : 'bg-white/90 backdrop-blur-sm text-gray-800 border-gray-200/50'
                                     }`}>
                                     <p className="text-sm whitespace-pre-wrap leading-relaxed">{message.content}</p>
                                     <p className={`text-xs mt-3 ${message.type === 'user' ? 'text-blue-100' : 'text-gray-500'}`}>
