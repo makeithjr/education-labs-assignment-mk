@@ -175,9 +175,24 @@ const EducationApp = () => {
         };
     };
 
-    // Enhanced YouTube integration with relevance validation
+    // Enhanced YouTube integration with relevance validation and context awareness
     const searchYouTubeVideos = async (searchTerms: string[], originalQuery: string): Promise<VideoData | null> => {
         console.log('Searching for videos with terms:', searchTerms);
+
+        // First, check if current video is still relevant to the new question
+        if (currentVideo) {
+            const currentVideoRelevance = checkCurrentVideoRelevance(currentVideo, originalQuery);
+            console.log('Current video relevance score:', currentVideoRelevance);
+
+            // If current video is still highly relevant, keep it
+            if (currentVideoRelevance >= 12) {
+                console.log('Keeping current video - still relevant to new question');
+                return currentVideo;
+            }
+
+            // If moderately relevant, we'll compare with search results
+            // If low relevance (< 8), we'll definitely search for new video
+        }
 
         for (const term of searchTerms) {
             try {
@@ -214,18 +229,40 @@ const EducationApp = () => {
                         const relevantVideo = validateVideoRelevance(detailsData.items, originalQuery, term);
 
                         if (relevantVideo) {
-                            console.log('Found relevant video:', relevantVideo.snippet.title);
-                            return {
-                                id: relevantVideo.id,
-                                title: relevantVideo.snippet.title,
-                                description: relevantVideo.snippet.description || 'No description available',
-                                channel: relevantVideo.snippet.channelTitle,
-                                duration: relevantVideo.contentDetails.duration,
-                                viewCount: relevantVideo.statistics.viewCount || '0',
-                                likeCount: relevantVideo.statistics.likeCount || '0',
-                                tags: relevantVideo.snippet.tags || [],
-                                embedUrl: `https://www.youtube.com/embed/${relevantVideo.id}`
-                            };
+                            const newVideoScore = calculateVideoScore(relevantVideo, originalQuery, term);
+                            const currentVideoScore = currentVideo ? checkCurrentVideoRelevance(currentVideo, originalQuery) : 0;
+
+                            // Only replace current video if new one is significantly better
+                            if (newVideoScore > currentVideoScore + 3) {
+                                console.log(`Found better video: "${relevantVideo.snippet.title}" (Score: ${newVideoScore} vs ${currentVideoScore})`);
+                                return {
+                                    id: relevantVideo.id,
+                                    title: relevantVideo.snippet.title,
+                                    description: relevantVideo.snippet.description || 'No description available',
+                                    channel: relevantVideo.snippet.channelTitle,
+                                    duration: relevantVideo.contentDetails.duration,
+                                    viewCount: relevantVideo.statistics.viewCount || '0',
+                                    likeCount: relevantVideo.statistics.likeCount || '0',
+                                    tags: relevantVideo.snippet.tags || [],
+                                    embedUrl: `https://www.youtube.com/embed/${relevantVideo.id}`
+                                };
+                            } else if (currentVideo && currentVideoScore >= 8) {
+                                console.log('Keeping current video - new video not significantly better');
+                                return currentVideo;
+                            } else {
+                                console.log('Found relevant video:', relevantVideo.snippet.title);
+                                return {
+                                    id: relevantVideo.id,
+                                    title: relevantVideo.snippet.title,
+                                    description: relevantVideo.snippet.description || 'No description available',
+                                    channel: relevantVideo.snippet.channelTitle,
+                                    duration: relevantVideo.contentDetails.duration,
+                                    viewCount: relevantVideo.statistics.viewCount || '0',
+                                    likeCount: relevantVideo.statistics.likeCount || '0',
+                                    tags: relevantVideo.snippet.tags || [],
+                                    embedUrl: `https://www.youtube.com/embed/${relevantVideo.id}`
+                                };
+                            }
                         } else {
                             console.log('No relevant videos found for term:', term);
                         }
@@ -236,7 +273,112 @@ const EducationApp = () => {
                 continue;
             }
         }
+
+        // If we get here and current video is still somewhat relevant, keep it
+        if (currentVideo) {
+            const currentVideoScore = checkCurrentVideoRelevance(currentVideo, originalQuery);
+            if (currentVideoScore >= 8) {
+                console.log('No better video found - keeping current video');
+                return currentVideo;
+            }
+        }
+
         return null;
+    };
+
+    // Check if current video is still relevant to new question
+    const checkCurrentVideoRelevance = (video: VideoData, newQuery: string): number => {
+        const queryKeywords = extractKeywords(newQuery.toLowerCase());
+        const title = video.title.toLowerCase();
+        const description = video.description.toLowerCase();
+        const tags = video.tags.join(' ').toLowerCase();
+
+        let score = 0;
+
+        // Check for query keywords in current video content
+        queryKeywords.forEach(keyword => {
+            if (title.includes(keyword)) score += 10;
+            if (description.includes(keyword)) score += 5;
+            if (tags.includes(keyword)) score += 3;
+        });
+
+        // Check for broader topic relevance (for follow-up questions)
+        const broadTopics = extractBroadTopics(title, description, tags);
+        const queryTopics = extractBroadTopics(newQuery.toLowerCase(), '', '');
+
+        broadTopics.forEach(topic => {
+            if (queryTopics.includes(topic)) score += 8;
+        });
+
+        return score;
+    };
+
+    // Extract broad topics for context awareness
+    const extractBroadTopics = (title: string, description: string, tags: string): string[] => {
+        const content = `${title} ${description} ${tags}`.toLowerCase();
+        const topics = [];
+
+        // Science topics
+        if (content.includes('photosynthesis') || content.includes('calvin cycle') || content.includes('chloroplast')) topics.push('photosynthesis');
+        if (content.includes('cell') || content.includes('cellular') || content.includes('mitochondria')) topics.push('cell biology');
+        if (content.includes('dna') || content.includes('rna') || content.includes('genetic')) topics.push('genetics');
+        if (content.includes('disease') || content.includes('illness') || content.includes('infection')) topics.push('diseases');
+        if (content.includes('heart') || content.includes('blood') || content.includes('circulatory')) topics.push('cardiovascular');
+
+        // Math topics
+        if (content.includes('calculus') || content.includes('derivative') || content.includes('integral')) topics.push('calculus');
+        if (content.includes('algebra') || content.includes('equation') || content.includes('linear')) topics.push('algebra');
+        if (content.includes('geometry') || content.includes('triangle') || content.includes('angle')) topics.push('geometry');
+
+        // History topics
+        if (content.includes('revolution') || content.includes('war') || content.includes('battle')) topics.push('history');
+        if (content.includes('ancient') || content.includes('rome') || content.includes('greece')) topics.push('ancient history');
+
+        // Physics topics
+        if (content.includes('quantum') || content.includes('physics') || content.includes('mechanics')) topics.push('physics');
+        if (content.includes('energy') || content.includes('force') || content.includes('motion')) topics.push('physics');
+
+        return topics;
+    };
+
+    // Calculate video score (extracted from validateVideoRelevance for reuse)
+    const calculateVideoScore = (video: YouTubeVideoDetails, originalQuery: string, searchTerm: string): number => {
+        const queryKeywords = extractKeywords(originalQuery.toLowerCase());
+        const searchKeywords = extractKeywords(searchTerm.toLowerCase());
+
+        const title = video.snippet.title.toLowerCase();
+        const description = (video.snippet.description || '').toLowerCase();
+        const tags = (video.snippet.tags || []).join(' ').toLowerCase();
+
+        let score = 0;
+
+        // Check for query keywords in video content
+        queryKeywords.forEach(keyword => {
+            if (title.includes(keyword)) score += 10;
+            if (description.includes(keyword)) score += 5;
+            if (tags.includes(keyword)) score += 3;
+        });
+
+        // Check for search term keywords
+        searchKeywords.forEach(keyword => {
+            if (title.includes(keyword)) score += 7;
+            if (description.includes(keyword)) score += 3;
+            if (tags.includes(keyword)) score += 2;
+        });
+
+        // Bonus for Khan Academy educational indicators
+        const educationalIndicators = ['basics', 'introduction', 'explained', 'what is', 'how to', 'tutorial', 'lesson'];
+        educationalIndicators.forEach(indicator => {
+            if (title.includes(indicator)) score += 2;
+        });
+
+        // Penalty for irrelevant content
+        const irrelevantTerms = ['advanced', 'graduate level', 'research', 'case study'];
+        irrelevantTerms.forEach(term => {
+            if (title.includes(term)) score -= 3;
+        });
+
+        return score;
     };
 
     // Video relevance validation function
@@ -351,7 +493,11 @@ const EducationApp = () => {
                     .trim();
 
                 if (videoData) {
-                    finalMessage = explanation + '\n\n🎥 I found a relevant Khan Academy video that matches your question!';
+                    // Check if this is the same video as before
+                    const isSameVideo = currentVideo && videoData.id === currentVideo.id;
+                    finalMessage = explanation + (isSameVideo
+                        ? '\n\n🎥 The Khan Academy video above is still relevant to your follow-up question!'
+                        : '\n\n🎥 I found a relevant Khan Academy video that matches your question!');
                     setCurrentVideo(videoData);
                 } else {
                     finalMessage = explanation + '\n\n📚 I couldn\'t find a Khan Academy video that specifically matches your question, but the explanation above should help! You might try rephrasing your question or asking about a more specific aspect of the topic.';
@@ -382,7 +528,7 @@ const EducationApp = () => {
             const errorMessage: Message = {
                 id: Date.now() + 1,
                 type: 'assistant',
-                content: `Unfortunately, I'm unable to process your request: "${userMessage}". Please try again, or inquire about a different educational subject.`,
+                content: `Unfortunately, I'm unable to process your request: "${userMessage}". Please try again, or inquire about a different educational topic or subject.`,
                 timestamp: new Date().toLocaleTimeString()
             };
             setMessages(prev => [...prev, errorMessage]);
@@ -501,7 +647,7 @@ const EducationApp = () => {
                             <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-3">
                                 Welcome to your Educational Assistant!
                             </h2>
-                            <p className="text-lg text-gray-600 mb-8">Ask me about any school-age academic topic, and I'll try to find relevant educational videos from <b>Khan Academy's</b> YouTube channel.</p>
+                            <p className="text-lg text-gray-600 mb-8">Ask me about any topic, and I'll try to find relevant educational videos from <b>Khan Academy's</b> YouTube channel.</p>
 
                             {/* Usage Guide and Sample Prompts */}
                             <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm border border-blue-200/50 rounded-2xl p-5 shadow-lg max-w-4xl mx-auto">
@@ -526,7 +672,7 @@ const EducationApp = () => {
                                             <ul className="space-y-1 text-blue-600 text-xs">
                                                 <li>• Ask specific learning questions</li>
                                                 <li>• Use educational keywords</li>
-                                                <li>• Mention subjects or topics</li>
+                                                <li>• Mention academic subjects or topics</li>
                                             </ul>
                                         </div>
                                     </div>
