@@ -125,7 +125,7 @@ const EducationApp = () => {
         };
     }, [isResizing, isHistoryCollapsed]);
 
-    // Anthropic API / Claude Integration
+    // Anthropic API / Claude Integration with enhanced video search terms
     const callClaudeAPI = async (userMessage: string): Promise<{ response: string; isEducational: boolean }> => {
         const response = await fetch('/api/claude', {
             method: 'POST',
@@ -139,11 +139,17 @@ const EducationApp = () => {
                 
                 If it IS educational:
                 - Provide a helpful explanation
-                - Suggest 2-3 specific search terms for Khan Academy videos
-                - Provide the specific search terms for the Khan Academy videos
+                - Suggest 3-4 VERY SPECIFIC search terms that would find videos directly related to this exact topic
+                - Make search terms precise and detailed, not generic
+                - Focus on the specific concept, process, or subject matter asked about
                 - Format as: EDUCATIONAL: YES
                              EXPLANATION: [your explanation]
-                             SEARCH_TERMS: [term1, term2, term3]
+                             SEARCH_TERMS: [specific term1, detailed term2, precise term3, exact topic term4]
+                
+                Examples of good search terms:
+                - For "What are diseases?": ["what are diseases", "disease definition types", "how diseases develop", "infectious vs chronic diseases"]
+                - For "How does photosynthesis work?": ["photosynthesis process steps", "light dependent reactions", "calvin cycle photosynthesis", "chloroplast photosynthesis"]
+                - For "What is calculus?": ["calculus introduction basics", "derivatives and integrals", "what is calculus used for", "calculus concepts explained"]
                 
                 If it is NOT educational (like shopping, entertainment, personal questions, etc.):
                 - Politely redirect to educational topics
@@ -169,8 +175,10 @@ const EducationApp = () => {
         };
     };
 
-    // YouTube integration
-    const searchYouTubeVideos = async (searchTerms: string[]): Promise<VideoData | null> => {
+    // Enhanced YouTube integration with relevance validation
+    const searchYouTubeVideos = async (searchTerms: string[], originalQuery: string): Promise<VideoData | null> => {
+        console.log('Searching for videos with terms:', searchTerms);
+
         for (const term of searchTerms) {
             try {
                 const response = await fetch('/api/youtube', {
@@ -186,6 +194,7 @@ const EducationApp = () => {
                 const data: YouTubeSearchResponse = await response.json();
 
                 if (data.items && data.items.length > 0) {
+                    // Get video details for all results to validate relevance
                     const videoIds = data.items.map((item: YouTubeSearchItem) => item.id.videoId).join(',');
 
                     const detailsResponse = await fetch('/api/youtube', {
@@ -201,19 +210,25 @@ const EducationApp = () => {
                     const detailsData: YouTubeDetailsResponse = await detailsResponse.json();
 
                     if (detailsData.items && detailsData.items.length > 0) {
-                        const bestVideo = detailsData.items[0];
+                        // Validate video relevance before returning
+                        const relevantVideo = validateVideoRelevance(detailsData.items, originalQuery, term);
 
-                        return {
-                            id: bestVideo.id,
-                            title: bestVideo.snippet.title,
-                            description: bestVideo.snippet.description || 'No description available',
-                            channel: bestVideo.snippet.channelTitle,
-                            duration: bestVideo.contentDetails.duration,
-                            viewCount: bestVideo.statistics.viewCount || '0',
-                            likeCount: bestVideo.statistics.likeCount || '0',
-                            tags: bestVideo.snippet.tags || [],
-                            embedUrl: `https://www.youtube.com/embed/${bestVideo.id}`
-                        };
+                        if (relevantVideo) {
+                            console.log('Found relevant video:', relevantVideo.snippet.title);
+                            return {
+                                id: relevantVideo.id,
+                                title: relevantVideo.snippet.title,
+                                description: relevantVideo.snippet.description || 'No description available',
+                                channel: relevantVideo.snippet.channelTitle,
+                                duration: relevantVideo.contentDetails.duration,
+                                viewCount: relevantVideo.statistics.viewCount || '0',
+                                likeCount: relevantVideo.statistics.likeCount || '0',
+                                tags: relevantVideo.snippet.tags || [],
+                                embedUrl: `https://www.youtube.com/embed/${relevantVideo.id}`
+                            };
+                        } else {
+                            console.log('No relevant videos found for term:', term);
+                        }
                     }
                 }
             } catch (error) {
@@ -222,6 +237,68 @@ const EducationApp = () => {
             }
         }
         return null;
+    };
+
+    // Video relevance validation function
+    const validateVideoRelevance = (videos: YouTubeVideoDetails[], originalQuery: string, searchTerm: string): YouTubeVideoDetails | null => {
+        const queryKeywords = extractKeywords(originalQuery.toLowerCase());
+        const searchKeywords = extractKeywords(searchTerm.toLowerCase());
+
+        let bestMatch: { video: YouTubeVideoDetails; score: number } | null = null;
+
+        for (const video of videos) {
+            const title = video.snippet.title.toLowerCase();
+            const description = (video.snippet.description || '').toLowerCase();
+            const tags = (video.snippet.tags || []).join(' ').toLowerCase();
+
+            // Calculate relevance score
+            let score = 0;
+
+            // Check for query keywords in video content
+            queryKeywords.forEach(keyword => {
+                if (title.includes(keyword)) score += 10; // Title matches are most important
+                if (description.includes(keyword)) score += 5;
+                if (tags.includes(keyword)) score += 3;
+            });
+
+            // Check for search term keywords
+            searchKeywords.forEach(keyword => {
+                if (title.includes(keyword)) score += 7;
+                if (description.includes(keyword)) score += 3;
+                if (tags.includes(keyword)) score += 2;
+            });
+
+            // Bonus for Khan Academy educational indicators
+            const educationalIndicators = ['basics', 'introduction', 'explained', 'what is', 'how to', 'tutorial', 'lesson'];
+            educationalIndicators.forEach(indicator => {
+                if (title.includes(indicator)) score += 2;
+            });
+
+            // Penalty for irrelevant content
+            const irrelevantTerms = ['advanced', 'graduate level', 'research', 'case study'];
+            irrelevantTerms.forEach(term => {
+                if (title.includes(term)) score -= 3;
+            });
+
+            console.log(`Video: "${video.snippet.title}" - Score: ${score}`);
+
+            if (score > 5 && (!bestMatch || score > bestMatch.score)) {
+                bestMatch = { video, score };
+            }
+        }
+
+        // Return best match if it meets minimum threshold
+        return bestMatch && bestMatch.score >= 8 ? bestMatch.video : null;
+    };
+
+    // Extract meaningful keywords from text
+    const extractKeywords = (text: string): string[] => {
+        const stopWords = ['what', 'is', 'are', 'how', 'does', 'do', 'the', 'a', 'an', 'and', 'or', 'but', 'in', 'on', 'at', 'to', 'for', 'of', 'with', 'by'];
+        return text
+            .replace(/[^\w\s]/g, ' ')
+            .split(/\s+/)
+            .filter(word => word.length > 2 && !stopWords.includes(word))
+            .slice(0, 8); // Limit to most relevant keywords
     };
 
     // message handler
@@ -260,8 +337,11 @@ const EducationApp = () => {
                     ? searchTermsMatch[1].split(',').map((term: string) => term.trim().replace(/['"]/g, ''))
                     : [userMessage.toLowerCase()];
 
-                // Search YouTube for educational videos
-                videoData = await searchYouTubeVideos(searchTerms);
+                console.log('Original query:', userMessage);
+                console.log('Search terms:', searchTerms);
+
+                // Search YouTube for educational videos with relevance validation
+                videoData = await searchYouTubeVideos(searchTerms, userMessage);
 
                 // Clean up the explanation
                 const explanation = claudeResponse
@@ -271,10 +351,10 @@ const EducationApp = () => {
                     .trim();
 
                 if (videoData) {
-                    finalMessage = explanation + '\n\n🎥 I found a relevant Khan Academy video for you!';
+                    finalMessage = explanation + '\n\n🎥 I found a relevant Khan Academy video that matches your question!';
                     setCurrentVideo(videoData);
                 } else {
-                    finalMessage = explanation + '\n\n📚 I couldn\'t find a specific Khan Academy video for this topic, but the explanation above should help!';
+                    finalMessage = explanation + '\n\n📚 I couldn\'t find a Khan Academy video that specifically matches your question, but the explanation above should help! You might try rephrasing your question or asking about a more specific aspect of the topic.';
                     setCurrentVideo(null);
                 }
             } else {
@@ -421,7 +501,7 @@ const EducationApp = () => {
                             <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-3">
                                 Welcome to your Educational Assistant!
                             </h2>
-                            <p className="text-lg text-gray-600 mb-8">Ask me about any academic topic, and I'll try to find relevant educational videos from <b>Khan Academy's</b> YouTube channel.</p>
+                            <p className="text-lg text-gray-600 mb-8">Ask me about any topic, and I'll try to find relevant educational videos from <b>Khan Academy's</b> YouTube Channel.</p>
 
                             {/* Usage Guide and Sample Prompts */}
                             <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm border border-blue-200/50 rounded-2xl p-5 shadow-lg max-w-4xl mx-auto">
@@ -438,14 +518,16 @@ const EducationApp = () => {
                                                 <li>• Provide educational explanations</li>
                                                 <li>• Find Khan Academy videos</li>
                                                 <li>• Focus on academic learning</li>
+                                                <li>• Guide you to educational content</li>
                                             </ul>
                                         </div>
 
                                         <div>
-                                            <h4 className="font-semibold text-blue-700 mb-2">💡 Best Practices:</h4>
+                                            <h4 className="font-semibold text-blue-700 mb-2">💡 Best Results:</h4>
                                             <ul className="space-y-1 text-blue-600 text-xs">
                                                 <li>• Ask specific learning questions</li>
                                                 <li>• Use educational keywords</li>
+                                                <li>• Request explanations or tutorials</li>
                                                 <li>• Mention subjects or topics</li>
                                             </ul>
                                         </div>
@@ -458,6 +540,7 @@ const EducationApp = () => {
                                                 "Explain how photosynthesis works",
                                                 "What is the Pythagorean theorem?",
                                                 "How do derivatives work in calculus?",
+                                                "Teach me about the American Revolution",
                                                 "What is machine learning?"
                                             ].map((prompt, index) => (
                                                 <button
@@ -472,6 +555,12 @@ const EducationApp = () => {
                                     </div>
                                 </div>
 
+                                <div className="mt-4 pt-3 border-t border-blue-200/50">
+                                    <p className="text-xs text-blue-600 flex items-center gap-1">
+                                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
+                                        I focus on educational topics and will guide you to learning resources if you ask about non-academic subjects.
+                                    </p>
+                                </div>
                             </div>
                         </div>
                     ) : (
