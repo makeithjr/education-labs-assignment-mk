@@ -501,7 +501,7 @@ const EducationApp = () => {
                             <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-3">
                                 Welcome to your Educational Assistant!
                             </h2>
-                            <p className="text-lg text-gray-600 mb-8">Ask me about any topic, and I'll try to find relevant educational videos from <b>Khan Academy's</b> YouTube Channel.</p>
+                            <p className="text-lg text-gray-600 mb-8">Ask me about any school-age academic topic, and I'll try to find relevant educational videos from <b>Khan Academy's</b> YouTube channel.</p>
 
                             {/* Usage Guide and Sample Prompts */}
                             <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm border border-blue-200/50 rounded-2xl p-5 shadow-lg max-w-4xl mx-auto">
@@ -518,16 +518,14 @@ const EducationApp = () => {
                                                 <li>• Provide educational explanations</li>
                                                 <li>• Find Khan Academy videos</li>
                                                 <li>• Focus on academic learning</li>
-                                                <li>• Guide you to educational content</li>
                                             </ul>
                                         </div>
 
                                         <div>
-                                            <h4 className="font-semibold text-blue-700 mb-2">💡 Best Results:</h4>
+                                            <h4 className="font-semibold text-blue-700 mb-2">💡 Best Practices:</h4>
                                             <ul className="space-y-1 text-blue-600 text-xs">
                                                 <li>• Ask specific learning questions</li>
                                                 <li>• Use educational keywords</li>
-                                                <li>• Request explanations or tutorials</li>
                                                 <li>• Mention subjects or topics</li>
                                             </ul>
                                         </div>
@@ -540,7 +538,6 @@ const EducationApp = () => {
                                                 "Explain how photosynthesis works",
                                                 "What is the Pythagorean theorem?",
                                                 "How do derivatives work in calculus?",
-                                                "Teach me about the American Revolution",
                                                 "What is machine learning?"
                                             ].map((prompt, index) => (
                                                 <button
@@ -555,12 +552,6 @@ const EducationApp = () => {
                                     </div>
                                 </div>
 
-                                <div className="mt-4 pt-3 border-t border-blue-200/50">
-                                    <p className="text-xs text-blue-600 flex items-center gap-1">
-                                        <span className="w-2 h-2 bg-green-500 rounded-full"></span>
-                                        I focus on educational topics and will guide you to learning resources if you ask about non-academic subjects.
-                                    </p>
-                                </div>
                             </div>
                         </div>
                     ) : (
