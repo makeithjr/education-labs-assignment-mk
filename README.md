@@ -11,7 +11,7 @@ A modern React app that helps users learn any topic by providing AI-powered expl
 
 ## Screenshots
 
-![image](https://github.com/user-attachments/assets/06184964-ab67-41cd-a462-7f4b0c0af7bc)
+![image](https://github.com/user-attachments/assets/a688a908-4095-466e-a40f-fdcc126a28f7)
 
 ## Getting Started
 
