@@ -58,6 +58,7 @@ This project is ready to deploy on [Vercel](https://vercel.com/):
 - [Lucide React](https://lucide.dev/) (for icons)
 - [Anthropic Claude API](https://www.anthropic.com/)
 - [YouTube Data API v3](https://developers.google.com/youtube/v3)
+- [Visual Studio Code](https://code.visualstudio.com/) (code editor for local development)
 - [Vercel](https://vercel.com/) (for deployment)
 
 ## Author
