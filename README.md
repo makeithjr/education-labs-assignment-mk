@@ -1,6 +1,6 @@
 # Educational Assistant
 
-A modern React app that helps users learn any topic by providing AI-powered explanations and finding relevant educational videos from Khan Academy's YouTube channel.
+A modern React app that helps users learn any topic by providing Claude-powered explanations and finding relevant educational videos from Khan Academy's YouTube channel.
 
 ## Features
 
