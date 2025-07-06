@@ -496,7 +496,7 @@ const EducationApp = () => {
                     // Check if this is the same video as before
                     const isSameVideo = currentVideo && videoData.id === currentVideo.id;
                     finalMessage = explanation + (isSameVideo
-                        ? '\n\n🎥 The Khan Academy video above is still relevant to your follow-up question!'
+                        ? '\n\n🎥 The Khan Academy video above may still be relevant to your follow-up question!'
                         : '\n\n🎥 I found a relevant Khan Academy video that matches your question!');
                     setCurrentVideo(videoData);
                 } else {
@@ -647,7 +647,7 @@ const EducationApp = () => {
                             <h2 className="text-2xl font-bold bg-gradient-to-r from-gray-800 to-gray-600 bg-clip-text text-transparent mb-3">
                                 Welcome to your Educational Assistant!
                             </h2>
-                            <p className="text-lg text-gray-600 mb-8">Ask me about any topic, and I'll try to find relevant educational videos from <b>Khan Academy's</b> YouTube channel.</p>
+                            <p className="text-lg text-gray-600 mb-8">Need help with a concept or academic topic? I’ll break it down with Claude and guide you to a Khan Academy YouTube channel video to support your understanding and learning.</p>
 
                             {/* Usage Guide and Sample Prompts */}
                             <div className="bg-gradient-to-r from-blue-50/80 to-indigo-50/80 backdrop-blur-sm border border-blue-200/50 rounded-2xl p-5 shadow-lg max-w-4xl mx-auto">
@@ -659,20 +659,20 @@ const EducationApp = () => {
                                 <div className="grid md:grid-cols-2 gap-4 text-sm">
                                     <div className="space-y-3">
                                         <div>
-                                            <h4 className="font-semibold text-blue-700 mb-2">✨ What I Do:</h4>
+                                            <h4 className="font-semibold text-blue-700 mb-2">✨ What I Can Do:</h4>
                                             <ul className="space-y-1 text-blue-600 text-xs">
-                                                <li>• Provide educational explanations</li>
-                                                <li>• Find Khan Academy videos</li>
-                                                <li>• Focus on academic learning</li>
+                                                <li>• Explain academic topics</li>
+                                                <li>• Find relevant Khan Academy videos</li>
+                                                <li>• Support focused, subject-based learning</li>
                                             </ul>
                                         </div>
 
                                         <div>
-                                            <h4 className="font-semibold text-blue-700 mb-2">💡 Best Practices:</h4>
+                                            <h4 className="font-semibold text-blue-700 mb-2">💡 Tips for Getting the Best Results:</h4>
                                             <ul className="space-y-1 text-blue-600 text-xs">
                                                 <li>• Ask specific learning questions</li>
-                                                <li>• Use educational keywords</li>
-                                                <li>• Mention academic subjects or topics</li>
+                                                <li>• Use keywords related to sachool subjects or topics</li>
+                                                <li>• Be curious &mdash; explore any academic topic you want to better understand!</li>
                                             </ul>
                                         </div>
                                     </div>
