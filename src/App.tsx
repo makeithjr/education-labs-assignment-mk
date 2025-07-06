@@ -684,7 +684,7 @@ const EducationApp = () => {
                                                 "Explain how photosynthesis works",
                                                 "What is the Pythagorean theorem?",
                                                 "How do derivatives work in calculus?",
-                                                "What is machine learning?"
+                                                "What is computer science?"
                                             ].map((prompt, index) => (
                                                 <button
                                                     key={index}
