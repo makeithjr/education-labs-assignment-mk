@@ -63,7 +63,7 @@ This project is ready to deploy on [Vercel](https://vercel.com/):
 
 ## Author
 
-Core codebase created by Michael Keith (https://github.com/your-github-username) & Claude.ai 
+Core codebase created by Michael Keith & Claude.ai 
 
 Email: michael.keith.jr[at]gmail.com
 
