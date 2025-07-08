@@ -27,8 +27,8 @@ This project is ready to deploy on [Vercel](https://vercel.com/):
 1. **Pull the repostiroy from GitHub: https://github.com/makeithjr/anthropic-assignment-mk.git**
 2. **Import this repository into Vercel.**
 3. **Set the following environment variables in your Vercel project dashboard:**
-   - `VITE_APP_CLAUDE_API_KEY`
-   - `VITE_APP_YOUTUBE_API_KEY`
+   - `ANTHROPIC_API_KEY`
+   - `YOUTUBE_API_KEY`
 4. **Vercel will automatically detect the Vite + React setup and use `npm run build` for production builds.**
 5. **The app will be deployed and accessible via your Vercel domain.**
 
