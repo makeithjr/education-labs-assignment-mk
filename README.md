@@ -46,6 +46,7 @@ This project is ready to deploy on [Vercel](https://vercel.com/):
 
 - `src/App.tsx` — Main application logic and UI.
 - `src/main.tsx` — App entry point.
+- `api/*` — Serverless functions that handles API requests to Claude and fetches to YouTube.
 - `index.html` — HTML template.
 - `vite.config.ts` — Vite configuration.
 
